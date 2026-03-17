@@ -40,6 +40,17 @@
       })();
     </script>
     <link rel="stylesheet" href="style.css">
+    <!-- Embed mode: hide tab bar when loaded inside iframe with ?embed=1 -->
+    <script>
+      (function() {
+        if (new URLSearchParams(window.location.search).get('embed') === '1') {
+          document.documentElement.classList.add('embed-mode');
+        }
+      })();
+    </script>
+    <style>
+      .embed-mode #sessionTabsBar { display: none !important; }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
