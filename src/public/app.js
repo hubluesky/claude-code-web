@@ -125,6 +125,17 @@ class ClaudeCodeWebInterface {
         window.addEventListener('resize', () => {
             this.fitTerminal();
         });
+
+        // ResizeObserver: detect container size changes (critical for iframe embedding)
+        // window 'resize' event does NOT fire when an iframe's container is resized by the parent
+        const terminalEl = document.getElementById('terminal');
+        if (terminalEl && typeof ResizeObserver !== 'undefined') {
+            let roTimer = null;
+            new ResizeObserver(() => {
+                clearTimeout(roTimer);
+                roTimer = setTimeout(() => this.fitTerminal(), 100);
+            }).observe(terminalEl);
+        }
         
         window.addEventListener('beforeunload', () => {
             this.disconnect();
