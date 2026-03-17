@@ -1,4 +1,4 @@
-const { spawn } = require('node-pty');
+const { spawn } = require('@lydell/node-pty');
 const path = require('path');
 const fs = require('fs');
 
