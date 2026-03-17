@@ -612,7 +612,9 @@ class ClaudeCodeWebServer {
       id: wsId,
       ws,
       claudeSessionId: null,
-      created: new Date()
+      created: new Date(),
+      cols: 80,
+      rows: 24
     };
     this.webSocketConnections.set(wsId, wsInfo);
 
@@ -675,12 +677,18 @@ class ClaudeCodeWebServer {
         break;
 
       case 'start_claude':
+        wsInfo.cols = data.cols || 80;
+        wsInfo.rows = data.rows || 24;
         await this.startClaude(wsId, { ...(data.options || {}), cols: data.cols, rows: data.rows });
         break;
       case 'start_codex':
+        wsInfo.cols = data.cols || 80;
+        wsInfo.rows = data.rows || 24;
         await this.startCodex(wsId, { ...(data.options || {}), cols: data.cols, rows: data.rows });
         break;
       case 'start_agent':
+        wsInfo.cols = data.cols || 80;
+        wsInfo.rows = data.rows || 24;
         await this.startAgent(wsId, { ...(data.options || {}), cols: data.cols, rows: data.rows });
         break;
       
@@ -720,18 +728,33 @@ class ClaudeCodeWebServer {
       
       case 'resize':
         if (wsInfo.claudeSessionId) {
-          // Verify the session exists and the WebSocket is part of it
+          // Record this client's terminal size
+          wsInfo.cols = data.cols || 80;
+          wsInfo.rows = data.rows || 24;
+
           const session = this.claudeSessions.get(wsInfo.claudeSessionId);
           if (session && session.connections.has(wsId)) {
-            // Only resize if an agent is actually running
+            // Compute max cols/rows across all active clients in this session.
+            // The pty can only have one size; use the largest so wide clients
+            // aren't penalized. Narrower clients rely on xterm local wrapping.
+            let maxCols = 0, maxRows = 0;
+            for (const connWsId of session.connections) {
+              const ci = this.webSocketConnections.get(connWsId);
+              if (ci && ci.ws.readyState === WebSocket.OPEN) {
+                if (ci.cols > maxCols) maxCols = ci.cols;
+                if (ci.rows > maxRows) maxRows = ci.rows;
+              }
+            }
+            if (!maxCols) { maxCols = data.cols || 80; maxRows = data.rows || 24; }
+
             if (session.active && session.agent) {
               try {
                 if (session.agent === 'codex') {
-                  await this.codexBridge.resize(wsInfo.claudeSessionId, data.cols, data.rows);
+                  await this.codexBridge.resize(wsInfo.claudeSessionId, maxCols, maxRows);
                 } else if (session.agent === 'agent') {
-                  await this.agentBridge.resize(wsInfo.claudeSessionId, data.cols, data.rows);
+                  await this.agentBridge.resize(wsInfo.claudeSessionId, maxCols, maxRows);
                 } else {
-                  await this.claudeBridge.resize(wsInfo.claudeSessionId, data.cols, data.rows);
+                  await this.claudeBridge.resize(wsInfo.claudeSessionId, maxCols, maxRows);
                 }
               } catch (error) {
                 if (this.dev) {
