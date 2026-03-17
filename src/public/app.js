@@ -684,19 +684,21 @@ class ClaudeCodeWebInterface {
                     this.pendingJoinSessionId = null;
                 }
                 
+                // Fit terminal BEFORE replaying buffer so content renders at correct width
+                this._reconnectResizeSent = true;
+                clearTimeout(this._resizeSignalTimer);
+                this.fitTerminal();
+
                 // Replay output buffer if available
                 if (message.outputBuffer && message.outputBuffer.length > 0) {
                     this.terminal.clear();
                     message.outputBuffer.forEach(data => {
-                        // Filter out focus tracking sequences (^[[I and ^[[O)
                         const filteredData = data.replace(/\x1b\[\[?[IO]/g, '');
                         this.terminal.write(filteredData);
                     });
                 }
-                
-                // Lock resize signals briefly, then send a single authoritative resize
-                this._reconnectResizeSent = true;
-                clearTimeout(this._resizeSignalTimer);
+
+                // Send authoritative resize to pty so active CLI redraws at correct width
                 setTimeout(() => {
                     this.fitTerminal();
                     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
@@ -706,7 +708,6 @@ class ClaudeCodeWebInterface {
                         this._lastSentRows = rows;
                         this.send({ type: 'resize', cols, rows });
                     }
-                    // Keep lock for 3s to absorb cascading resize events
                     setTimeout(() => { this._reconnectResizeSent = false; }, 3000);
                 }, 300);
 

@@ -148,7 +148,14 @@ class ClaudeCodeWebServer {
       res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
     });
     
-    this.app.use(express.static(path.join(__dirname, 'public')));
+    this.app.use(express.static(path.join(__dirname, 'public'), {
+      etag: false,
+      maxAge: 0,
+      setHeaders: (res) => {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+        res.set('Pragma', 'no-cache');
+      }
+    }));
 
     // PWA Icon routes - generate icons dynamically
     const iconSizes = [16, 32, 144, 180, 192, 512];
