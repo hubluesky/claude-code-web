@@ -33,6 +33,13 @@ class ClaudeCodeWebInterface {
         this.sessionTimerInterval = null;
         
         this.splitContainer = null;
+
+        // Resize signal dedup/debounce to prevent repeated CLI redraws (logo duplication)
+        this._resizeSignalTimer = null;
+        this._lastSentCols = 0;
+        this._lastSentRows = 0;
+        this._reconnectResizeSent = false;
+
         this.init();
     }
 
@@ -356,9 +363,19 @@ class ClaudeCodeWebInterface {
         });
 
         this.terminal.onResize(({ cols, rows }) => {
-            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                this.send({ type: 'resize', cols, rows });
-            }
+            // Skip resize signals during reconnect lock period
+            if (this._reconnectResizeSent) return;
+            // Deduplicate: skip if cols/rows unchanged
+            if (cols === this._lastSentCols && rows === this._lastSentRows) return;
+            // Debounce: coalesce rapid resize signals (e.g. panel drag)
+            clearTimeout(this._resizeSignalTimer);
+            this._resizeSignalTimer = setTimeout(() => {
+                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                    this._lastSentCols = cols;
+                    this._lastSentRows = rows;
+                    this.send({ type: 'resize', cols, rows });
+                }
+            }, 150);
         });
     }
 
@@ -666,6 +683,22 @@ class ClaudeCodeWebInterface {
                     });
                 }
                 
+                // Lock resize signals briefly, then send a single authoritative resize
+                this._reconnectResizeSent = true;
+                clearTimeout(this._resizeSignalTimer);
+                setTimeout(() => {
+                    this.fitTerminal();
+                    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                        const cols = this.terminal.cols;
+                        const rows = this.terminal.rows;
+                        this._lastSentCols = cols;
+                        this._lastSentRows = rows;
+                        this.send({ type: 'resize', cols, rows });
+                    }
+                    // Keep lock for 3s to absorb cascading resize events
+                    setTimeout(() => { this._reconnectResizeSent = false; }, 3000);
+                }, 300);
+
                 // Show appropriate UI based on session state
                 console.log('[session_joined] Checking if should show overlay. Active:', message.active);
                 if (message.active) {

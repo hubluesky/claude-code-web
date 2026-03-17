@@ -178,7 +178,10 @@ async function main() {
 
     console.log('\nPress Ctrl+C to stop the server\n');
 
+    let isShuttingDown = false;
     const shutdown = async () => {
+      if (isShuttingDown) return;
+      isShuttingDown = true;
       console.log('\nShutting down server...');
       // Close ngrok tunnel first if active
       if (ngrokListener && typeof ngrokListener.close === 'function') {
@@ -188,10 +191,21 @@ async function main() {
         console.log('Server closed');
         process.exit(0);
       });
+      // Force exit after 3s if close() hangs
+      setTimeout(() => { process.exit(0); }, 3000).unref();
     };
 
     process.on('SIGINT', () => { shutdown(); });
     process.on('SIGTERM', () => { shutdown(); });
+    process.on('SIGHUP', () => { shutdown(); });
+
+    // Windows: Ctrl+C in PowerShell/cmd may skip SIGINT and kill directly.
+    // 'exit' event fires synchronously as a last resort — do sync cleanup.
+    process.on('exit', () => {
+      if (!isShuttingDown) {
+        try { server.closeSync ? server.closeSync() : server.close(); } catch(_) {}
+      }
+    });
 
   } catch (error) {
     console.error('Error starting server:', error.message);

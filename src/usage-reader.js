@@ -5,7 +5,7 @@ const { createReadStream } = require('fs');
 
 class UsageReader {
   constructor(sessionDurationHours = 5) {
-    this.claudeProjectsPath = path.join(process.env.HOME, '.claude', 'projects');
+    this.claudeProjectsPath = path.join(process.env.USERPROFILE || process.env.HOME || require('os').homedir(), '.claude', 'projects');
     this.cache = null;
     this.cacheTime = null;
     this.cacheTimeout = 5000; // Cache for 5 seconds for more real-time updates

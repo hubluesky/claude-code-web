@@ -9,12 +9,14 @@ class ClaudeBridge {
   }
 
   findClaudeCommand() {
+    const home = process.env.USERPROFILE || process.env.HOME || '/';
     const possibleCommands = [
+      path.join(home, '.local', 'bin', 'claude'),
+      path.join(home, '.local', 'bin', 'claude.exe'),
       '/home/ec2-user/.claude/local/claude',
       'claude',
       'claude-code',
-      path.join(process.env.HOME || '/', '.claude', 'local', 'claude'),
-      path.join(process.env.HOME || '/', '.local', 'bin', 'claude'),
+      path.join(home, '.claude', 'local', 'claude'),
       '/usr/local/bin/claude',
       '/usr/bin/claude'
     ];
@@ -36,7 +38,8 @@ class ClaudeBridge {
 
   commandExists(command) {
     try {
-      require('child_process').execFileSync('which', [command], { stdio: 'ignore' });
+      const cmd = process.platform === 'win32' ? 'where' : 'which';
+      require('child_process').execFileSync(cmd, [command], { stdio: 'ignore' });
       return true;
     } catch (error) {
       return false;

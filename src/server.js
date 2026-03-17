@@ -78,7 +78,15 @@ class ClaudeCodeWebServer {
     // Also save on process exit
     process.on('SIGINT', () => this.handleShutdown());
     process.on('SIGTERM', () => this.handleShutdown());
+    process.on('SIGHUP', () => this.handleShutdown());
     process.on('beforeExit', () => this.saveSessionsToDisk());
+
+    // Windows: when PowerShell Ctrl+C kills the console host, stdin closes.
+    // Detect this as a shutdown signal since SIGINT may not fire on Windows.
+    if (process.platform === 'win32' && process.stdin && process.stdin.on) {
+      process.stdin.resume();
+      process.stdin.on('end', () => this.handleShutdown());
+    }
   }
   
   async saveSessionsToDisk() {
