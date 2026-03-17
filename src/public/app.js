@@ -34,12 +34,6 @@ class ClaudeCodeWebInterface {
         
         this.splitContainer = null;
 
-        // Resize signal dedup/debounce to prevent repeated CLI redraws (logo duplication)
-        this._resizeSignalTimer = null;
-        this._lastSentCols = 0;
-        this._lastSentRows = 0;
-        this._reconnectResizeSent = false;
-
         this.init();
     }
 
@@ -374,19 +368,9 @@ class ClaudeCodeWebInterface {
         });
 
         this.terminal.onResize(({ cols, rows }) => {
-            // Skip resize signals during reconnect lock period
-            if (this._reconnectResizeSent) return;
-            // Deduplicate: skip if cols/rows unchanged
-            if (cols === this._lastSentCols && rows === this._lastSentRows) return;
-            // Debounce: coalesce rapid resize signals (e.g. panel drag)
-            clearTimeout(this._resizeSignalTimer);
-            this._resizeSignalTimer = setTimeout(() => {
-                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                    this._lastSentCols = cols;
-                    this._lastSentRows = rows;
-                    this.send({ type: 'resize', cols, rows });
-                }
-            }, 150);
+            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                this.send({ type: 'resize', cols, rows });
+            }
         });
     }
 
@@ -684,34 +668,15 @@ class ClaudeCodeWebInterface {
                     this.pendingJoinSessionId = null;
                 }
                 
-                // Fit terminal BEFORE replaying buffer so content renders at correct width
-                this._reconnectResizeSent = true;
-                clearTimeout(this._resizeSignalTimer);
-                this.fitTerminal();
-
-                // Replay output buffer only for ACTIVE sessions.
-                // Inactive (stopped) sessions have buffer recorded at old cols which
-                // causes content to render at wrong width. Skip replay for dead sessions.
-                if (message.active && message.outputBuffer && message.outputBuffer.length > 0) {
+                // Replay output buffer if available
+                if (message.outputBuffer && message.outputBuffer.length > 0) {
                     this.terminal.clear();
                     message.outputBuffer.forEach(data => {
+                        // Filter out focus tracking sequences (^[[I and ^[[O)
                         const filteredData = data.replace(/\x1b\[\[?[IO]/g, '');
                         this.terminal.write(filteredData);
                     });
                 }
-
-                // Send authoritative resize to pty so active CLI redraws at correct width
-                setTimeout(() => {
-                    this.fitTerminal();
-                    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                        const cols = this.terminal.cols;
-                        const rows = this.terminal.rows;
-                        this._lastSentCols = cols;
-                        this._lastSentRows = rows;
-                        this.send({ type: 'resize', cols, rows });
-                    }
-                    setTimeout(() => { this._reconnectResizeSent = false; }, 3000);
-                }, 300);
 
                 // Show appropriate UI based on session state
                 console.log('[session_joined] Checking if should show overlay. Active:', message.active);
