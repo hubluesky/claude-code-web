@@ -723,6 +723,8 @@ class ClaudeCodeWebInterface {
                 
             case 'claude_started':
                 this.hideOverlay();
+                // Clear old terminal content so new session doesn't overlap
+                this.terminal.clear();
                 // Don't auto-focus to avoid focus tracking sequences
                 // User can click to focus when ready
                 this.loadSessions(); // Refresh session list
