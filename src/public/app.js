@@ -689,8 +689,10 @@ class ClaudeCodeWebInterface {
                 clearTimeout(this._resizeSignalTimer);
                 this.fitTerminal();
 
-                // Replay output buffer if available
-                if (message.outputBuffer && message.outputBuffer.length > 0) {
+                // Replay output buffer only for ACTIVE sessions.
+                // Inactive (stopped) sessions have buffer recorded at old cols which
+                // causes content to render at wrong width. Skip replay for dead sessions.
+                if (message.active && message.outputBuffer && message.outputBuffer.length > 0) {
                     this.terminal.clear();
                     message.outputBuffer.forEach(data => {
                         const filteredData = data.replace(/\x1b\[\[?[IO]/g, '');
