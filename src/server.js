@@ -930,7 +930,10 @@ class ClaudeCodeWebServer {
 
     // Capture the session ID to avoid closure issues
     const sessionId = wsInfo.claudeSessionId;
-    
+
+    // Clear output buffer so reconnecting clients don't see stale content
+    session.outputBuffer = [];
+
     try {
       await this.claudeBridge.startSession(sessionId, {
         workingDir: session.workingDir,
@@ -1037,6 +1040,7 @@ class ClaudeCodeWebServer {
     }
 
     const sessionId = wsInfo.claudeSessionId;
+    session.outputBuffer = [];
     try {
       await this.codexBridge.startSession(sessionId, {
         workingDir: session.workingDir,
@@ -1125,6 +1129,7 @@ class ClaudeCodeWebServer {
     }
 
     const sessionId = wsInfo.claudeSessionId;
+    session.outputBuffer = [];
     try {
       await this.agentBridge.startSession(sessionId, {
         workingDir: session.workingDir,
