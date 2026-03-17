@@ -83,7 +83,8 @@ class ClaudeCodeWebServer {
 
     // Windows: when PowerShell Ctrl+C kills the console host, stdin closes.
     // Detect this as a shutdown signal since SIGINT may not fire on Windows.
-    if (process.platform === 'win32' && process.stdin && process.stdin.on) {
+    // Only listen when stdin is a TTY (interactive terminal), not when piped/backgrounded.
+    if (process.platform === 'win32' && process.stdin && process.stdin.isTTY && process.stdin.on) {
       process.stdin.resume();
       process.stdin.on('end', () => this.handleShutdown());
     }
