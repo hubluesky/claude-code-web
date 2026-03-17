@@ -277,7 +277,9 @@ class ClaudeCodeWebServer {
         workingDir: validWorkingDir,
         connections: new Set(),
         outputBuffer: [],
-        maxBufferSize: 1000
+        maxBufferSize: 1000,
+        ptyCols: 0,  // Track current pty size to avoid redundant resizes
+        ptyRows: 0
       };
       
       this.claudeSessions.set(sessionId, session);
@@ -747,7 +749,13 @@ class ClaudeCodeWebServer {
             }
             if (!maxCols) { maxCols = data.cols || 80; maxRows = data.rows || 24; }
 
-            if (session.active && session.agent) {
+            // Only forward resize to pty if dimensions actually changed.
+            // Claude CLI redraws its header on every SIGWINCH, so redundant
+            // resizes (e.g. from iframe reconnects) cause logo accumulation
+            // in the outputBuffer.
+            if (session.active && session.agent && (maxCols !== session.ptyCols || maxRows !== session.ptyRows)) {
+              session.ptyCols = maxCols;
+              session.ptyRows = maxRows;
               try {
                 if (session.agent === 'codex') {
                   await this.codexBridge.resize(wsInfo.claudeSessionId, maxCols, maxRows);
@@ -933,6 +941,9 @@ class ClaudeCodeWebServer {
 
     // Clear output buffer so reconnecting clients don't see stale content
     session.outputBuffer = [];
+    // Track initial pty size
+    session.ptyCols = options.cols || 80;
+    session.ptyRows = options.rows || 24;
 
     try {
       await this.claudeBridge.startSession(sessionId, {
@@ -1041,6 +1052,8 @@ class ClaudeCodeWebServer {
 
     const sessionId = wsInfo.claudeSessionId;
     session.outputBuffer = [];
+    session.ptyCols = options.cols || 80;
+    session.ptyRows = options.rows || 24;
     try {
       await this.codexBridge.startSession(sessionId, {
         workingDir: session.workingDir,
@@ -1130,6 +1143,8 @@ class ClaudeCodeWebServer {
 
     const sessionId = wsInfo.claudeSessionId;
     session.outputBuffer = [];
+    session.ptyCols = options.cols || 80;
+    session.ptyRows = options.rows || 24;
     try {
       await this.agentBridge.startSession(sessionId, {
         workingDir: session.workingDir,
