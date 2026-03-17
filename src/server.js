@@ -667,13 +667,13 @@ class ClaudeCodeWebServer {
         break;
 
       case 'start_claude':
-        await this.startClaude(wsId, data.options || {});
+        await this.startClaude(wsId, { ...(data.options || {}), cols: data.cols, rows: data.rows });
         break;
       case 'start_codex':
-        await this.startCodex(wsId, data.options || {});
+        await this.startCodex(wsId, { ...(data.options || {}), cols: data.cols, rows: data.rows });
         break;
       case 'start_agent':
-        await this.startAgent(wsId, data.options || {});
+        await this.startAgent(wsId, { ...(data.options || {}), cols: data.cols, rows: data.rows });
         break;
       
       case 'input':
@@ -903,6 +903,8 @@ class ClaudeCodeWebServer {
     try {
       await this.claudeBridge.startSession(sessionId, {
         workingDir: session.workingDir,
+        cols: options.cols || 80,
+        rows: options.rows || 24,
         onOutput: (data) => {
           // Get the current session again to ensure we have the right reference
           const currentSession = this.claudeSessions.get(sessionId);
@@ -1007,6 +1009,8 @@ class ClaudeCodeWebServer {
     try {
       await this.codexBridge.startSession(sessionId, {
         workingDir: session.workingDir,
+        cols: options.cols || 80,
+        rows: options.rows || 24,
         onOutput: (data) => {
           const currentSession = this.claudeSessions.get(sessionId);
           if (!currentSession) return;
@@ -1093,6 +1097,8 @@ class ClaudeCodeWebServer {
     try {
       await this.agentBridge.startSession(sessionId, {
         workingDir: session.workingDir,
+        cols: options.cols || 80,
+        rows: options.rows || 24,
         onOutput: (data) => {
           const currentSession = this.claudeSessions.get(sessionId);
           if (!currentSession) return;

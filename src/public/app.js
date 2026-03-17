@@ -876,20 +876,25 @@ class ClaudeCodeWebInterface {
     }
 
     startClaudeSession(options = {}) {
+        // Include current terminal dimensions so pty starts at the right size
+        const cols = this.terminal?.cols || 80;
+        const rows = this.terminal?.rows || 24;
+        const startMsg = { type: 'start_claude', options, cols, rows };
+
         // If no session, create one first
         if (!this.currentClaudeSessionId) {
             const sessionName = `Session ${new Date().toLocaleString()}`;
-            this.send({ 
+            this.send({
                 type: 'create_session',
                 name: sessionName,
                 workingDir: this.selectedWorkingDir
             });
             // Wait for session creation, then start Claude
             setTimeout(() => {
-                this.send({ type: 'start_claude', options });
+                this.send(startMsg);
             }, 500);
         } else {
-            this.send({ type: 'start_claude', options });
+            this.send(startMsg);
         }
         
         this.showOverlay('loadingSpinner');
@@ -900,6 +905,10 @@ class ClaudeCodeWebInterface {
     }
 
     startCodexSession(options = {}) {
+        const cols = this.terminal?.cols || 80;
+        const rows = this.terminal?.rows || 24;
+        const startMsg = { type: 'start_codex', options, cols, rows };
+
         // If no session, create one first
         if (!this.currentClaudeSessionId) {
             const sessionName = `Session ${new Date().toLocaleString()}`;
@@ -908,12 +917,9 @@ class ClaudeCodeWebInterface {
                 name: sessionName,
                 workingDir: this.selectedWorkingDir
             });
-            // Wait for session creation, then start Codex
-            setTimeout(() => {
-                this.send({ type: 'start_codex', options });
-            }, 500);
+            setTimeout(() => { this.send(startMsg); }, 500);
         } else {
-            this.send({ type: 'start_codex', options });
+            this.send(startMsg);
         }
 
         this.showOverlay('loadingSpinner');
@@ -924,6 +930,10 @@ class ClaudeCodeWebInterface {
     }
 
     startAgentSession(options = {}) {
+        const cols = this.terminal?.cols || 80;
+        const rows = this.terminal?.rows || 24;
+        const startMsg = { type: 'start_agent', options, cols, rows };
+
         // If no session, create one first
         if (!this.currentClaudeSessionId) {
             const sessionName = `Session ${new Date().toLocaleString()}`;
@@ -932,12 +942,9 @@ class ClaudeCodeWebInterface {
                 name: sessionName,
                 workingDir: this.selectedWorkingDir
             });
-            // Wait for session creation, then start Agent
-            setTimeout(() => {
-                this.send({ type: 'start_agent', options });
-            }, 500);
+            setTimeout(() => { this.send(startMsg); }, 500);
         } else {
-            this.send({ type: 'start_agent', options });
+            this.send(startMsg);
         }
         
         this.showOverlay('loadingSpinner');
