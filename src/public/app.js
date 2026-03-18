@@ -104,11 +104,9 @@ class ClaudeCodeWebInterface {
             const firstTabId = this.sessionTabManager.tabs.keys().next().value;
             console.log('[Init] Switching to tab:', firstTabId);
             await this.sessionTabManager.switchToTab(firstTabId);
-            
-            // Hide overlay completely since we have sessions
-            console.log('[Init] About to hide overlay');
-            this.hideOverlay();
-            console.log('[Init] Overlay should be hidden now');
+            // session_joined handler manages overlay visibility:
+            // - active session → overlay hidden
+            // - inactive session → auto-starts Claude
         } else {
             console.log('[Init] No sessions found, showing folder browser');
             // No sessions - hide loading overlay and show folder picker to create first session
@@ -691,14 +689,12 @@ class ClaudeCodeWebInterface {
                     const isNewSession = !message.outputBuffer || message.outputBuffer.length === 0;
                     
                     if (isNewSession) {
-                        console.log('[session_joined] New session detected, showing start prompt');
-                        this.showOverlay('startPrompt');
+                        console.log('[session_joined] New session detected, auto-starting Claude');
+                        this.startClaudeSession();
                     } else {
-                        console.log('[session_joined] Existing session with stopped Claude, showing restart prompt');
-                        // For existing sessions where Claude has stopped, show start prompt
-                        // This allows the user to restart Claude in the same session
-                        this.terminal.writeln(`\r\n\x1b[33m${this.getAlias('claude')} has stopped in this session. Click "Start ${this.getAlias('claude')}" to restart.\x1b[0m`);
-                        this.showOverlay('startPrompt');
+                        console.log('[session_joined] Existing session with stopped Claude, auto-restarting');
+                        this.terminal.writeln(`\r\n\x1b[33m${this.getAlias('claude')} has stopped. Restarting...\x1b[0m`);
+                        this.startClaudeSession();
                     }
                 }
                 break;
@@ -990,11 +986,10 @@ class ClaudeCodeWebInterface {
     hideOverlay() {
         const overlay = document.getElementById('overlay');
         if (overlay) {
-            console.log('[hideOverlay] Hiding overlay, current display:', overlay.style.display);
             overlay.style.display = 'none';
-            console.log('[hideOverlay] Overlay hidden, new display:', overlay.style.display);
-        } else {
-            console.error('[hideOverlay] Overlay element not found!');
+            // Re-fit terminal after overlay hides so columns are calculated
+            // against the actual visible container size (critical for Cocos embedded browser)
+            setTimeout(() => this.fitTerminal(), 50);
         }
     }
 
